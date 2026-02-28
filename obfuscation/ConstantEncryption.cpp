@@ -37,21 +37,18 @@ static cl::opt<bool>
                   cl::desc("Substitute xor operator of ConstantEncryption"),
                   cl::value_desc("Substitute xor operator"), cl::init(false),
                   cl::Optional);
-static bool SubstituteXorTemp = false;
 
 static cl::opt<uint32_t> SubstituteXorProb(
     "constenc_subxor_prob",
     cl::desc(
         "Choose the probability [%] each xor operator will be Substituted"),
     cl::value_desc("probability rate"), cl::init(40), cl::Optional);
-static uint32_t SubstituteXorProbTemp = 40;
 
 static cl::opt<bool>
     ConstToGV("constenc_togv",
               cl::desc("Replace ConstantInt with GlobalVariable"),
               cl::value_desc("ConstantInt to GlobalVariable"), cl::init(false),
               cl::Optional);
-static bool ConstToGVTemp = false;
 
 static cl::opt<uint32_t>
     ConstToGVProb("constenc_togv_prob",
@@ -59,14 +56,12 @@ static cl::opt<uint32_t>
                            "replaced with GlobalVariable"),
                   cl::value_desc("probability rate"), cl::init(50),
                   cl::Optional);
-static uint32_t ConstToGVProbTemp = 50;
 
 static cl::opt<uint32_t> ObfTimes(
     "constenc_times",
     cl::desc(
         "Choose how many time the ConstantEncryption pass loop on a function"),
     cl::value_desc("Number of Times"), cl::init(1), cl::Optional);
-static uint32_t ObfTimesTemp = 1;
 
 namespace llvm {
 struct ConstantEncryption : public ModulePass {
@@ -74,6 +69,12 @@ struct ConstantEncryption : public ModulePass {
   bool flag;
   bool dispatchonce;
   std::unordered_set<GlobalVariable *> handled_gvs;
+  // Per-invocation option state — stored as members to avoid data races.
+  bool SubstituteXorTemp = false;
+  uint32_t SubstituteXorProbTemp = 40;
+  bool ConstToGVTemp = false;
+  uint32_t ConstToGVProbTemp = 50;
+  uint32_t ObfTimesTemp = 1;
   ConstantEncryption(bool flag) : ModulePass(ID) { this->flag = flag; }
   ConstantEncryption() : ModulePass(ID) { this->flag = true; }
   bool shouldEncryptConstant(Instruction *I) {
