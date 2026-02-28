@@ -20,7 +20,6 @@ static cl::opt<uint32_t>
                        cl::desc("Choose the probability [%] each element of "
                                 "ConstantDataSequential will be "
                                 "obfuscated by the -strcry pass"));
-static uint32_t ElementEncryptProbTemp = 100;
 
 namespace llvm {
 struct StringEncryption : public ModulePass {
@@ -28,6 +27,8 @@ struct StringEncryption : public ModulePass {
   bool flag;
   bool appleptrauth;
   bool opaquepointers;
+  // Per-invocation option state — stored as member to avoid data races.
+  uint32_t ElementEncryptProbTemp = 100;
   std::unordered_map<Function * /*Function*/,
                      GlobalVariable * /*Decryption Status*/>
       encstatus;
