@@ -112,51 +112,42 @@ static cl::opt<uint32_t>
                          "obfuscated by the -bcf pass"),
                 cl::value_desc("probability rate"), cl::init(defaultObfRate),
                 cl::Optional);
-static uint32_t ObfProbRateTemp = defaultObfRate;
-
 static cl::opt<uint32_t>
     ObfTimes("bcf_loop",
              cl::desc("Choose how many time the -bcf pass loop on a function"),
              cl::value_desc("number of times"), cl::init(defaultObfTime),
              cl::Optional);
-static uint32_t ObfTimesTemp = defaultObfTime;
 
 static cl::opt<uint32_t> ConditionExpressionComplexity(
     "bcf_cond_compl",
     cl::desc("The complexity of the expression used to generate branching "
              "condition"),
     cl::value_desc("Complexity"), cl::init(3), cl::Optional);
-static uint32_t ConditionExpressionComplexityTemp = 3;
 
 static cl::opt<bool>
     OnlyJunkAssembly("bcf_onlyjunkasm",
                      cl::desc("only add junk assembly to altered basic block"),
                      cl::value_desc("only add junk assembly"), cl::init(false),
                      cl::Optional);
-static bool OnlyJunkAssemblyTemp = false;
 
 static cl::opt<bool> JunkAssembly(
     "bcf_junkasm",
     cl::desc("Whether to add junk assembly to altered basic block"),
     cl::value_desc("add junk assembly"), cl::init(false), cl::Optional);
-static bool JunkAssemblyTemp = false;
 
 static cl::opt<uint32_t> MaxNumberOfJunkAssembly(
     "bcf_junkasm_maxnum",
     cl::desc("The maximum number of junk assembliy per altered basic block"),
     cl::value_desc("max number of junk assembly"), cl::init(4), cl::Optional);
-static uint32_t MaxNumberOfJunkAssemblyTemp = 4;
 
 static cl::opt<uint32_t> MinNumberOfJunkAssembly(
     "bcf_junkasm_minnum",
     cl::desc("The minimum number of junk assembliy per altered basic block"),
     cl::value_desc("min number of junk assembly"), cl::init(2), cl::Optional);
-static uint32_t MinNumberOfJunkAssemblyTemp = 2;
 
 static cl::opt<bool> CreateFunctionForOpaquePredicate(
     "bcf_createfunc", cl::desc("Create function for each opaque predicate"),
     cl::value_desc("create function"), cl::init(false), cl::Optional);
-static bool CreateFunctionForOpaquePredicateTemp = false;
 
 static const Instruction::BinaryOps ops[] = {
     Instruction::Add, Instruction::Sub, Instruction::And, Instruction::Or,
@@ -195,6 +186,16 @@ struct BogusControlFlow : public FunctionPass {
   static char ID; // Pass identification
   bool flag;
   SmallVector<const ICmpInst *, 8> needtoedit;
+  // Per-invocation option state — stored as members to avoid data races
+  // between concurrent pass instances sharing file-scope statics.
+  uint32_t ObfProbRateTemp = defaultObfRate;
+  uint32_t ObfTimesTemp = defaultObfTime;
+  uint32_t ConditionExpressionComplexityTemp = 3;
+  bool OnlyJunkAssemblyTemp = false;
+  bool JunkAssemblyTemp = false;
+  uint32_t MaxNumberOfJunkAssemblyTemp = 4;
+  uint32_t MinNumberOfJunkAssemblyTemp = 2;
+  bool CreateFunctionForOpaquePredicateTemp = false;
   BogusControlFlow() : FunctionPass(ID) { this->flag = true; }
   BogusControlFlow(bool flag) : FunctionPass(ID) { this->flag = flag; }
   /* runOnFunction
@@ -478,7 +479,6 @@ struct BogusControlFlow : public FunctionPass {
         if (i->isBinaryOp()) { // binary instructions
           unsigned int opcode = i->getOpcode();
           Instruction *op, *op1 = nullptr;
-          Twine *var = new Twine("_");
           // treat differently float or int
           // Binary int
           if (opcode == Instruction::Add || opcode == Instruction::Sub ||
@@ -494,19 +494,19 @@ struct BogusControlFlow : public FunctionPass {
               case 0:                              // do nothing
                 break;
               case 1:
-                op = BinaryOperator::CreateNeg(i->getOperand(0), *var, &*i);
+                op = BinaryOperator::CreateNeg(i->getOperand(0), "_", &*i);
                 op1 = BinaryOperator::Create(Instruction::Add, op,
                                              i->getOperand(1), "gen", &*i);
                 break;
               case 2:
                 op1 = BinaryOperator::Create(Instruction::Sub, i->getOperand(0),
-                                             i->getOperand(1), *var, &*i);
+                                             i->getOperand(1), "_", &*i);
                 op = BinaryOperator::Create(Instruction::Mul, op1,
                                             i->getOperand(1), "gen", &*i);
                 break;
               case 3:
                 op = BinaryOperator::Create(Instruction::Shl, i->getOperand(0),
-                                            i->getOperand(1), *var, &*i);
+                                            i->getOperand(1), "_", &*i);
                 break;
               }
             }
@@ -521,13 +521,13 @@ struct BogusControlFlow : public FunctionPass {
               case 0:                              // do nothing
                 break;
               case 1:
-                op = UnaryOperator::CreateFNeg(i->getOperand(0), *var, &*i);
+                op = UnaryOperator::CreateFNeg(i->getOperand(0), "_", &*i);
                 op1 = BinaryOperator::Create(Instruction::FAdd, op,
                                              i->getOperand(1), "gen", &*i);
                 break;
               case 2:
                 op = BinaryOperator::Create(Instruction::FSub, i->getOperand(0),
-                                            i->getOperand(1), *var, &*i);
+                                            i->getOperand(1), "_", &*i);
                 op1 = BinaryOperator::Create(Instruction::FMul, op,
                                              i->getOperand(1), "gen", &*i);
                 break;
