@@ -223,10 +223,10 @@ ModulePass *createObfuscationLegacyPass() {
 }
 
 PreservedAnalyses ObfuscationPass::run(Module &M, ModuleAnalysisManager &MAM) {
-  if (createObfuscationLegacyPass()->runOnModule(M)) {
-    return PreservedAnalyses::none();
-  }
-  return PreservedAnalyses::all();
+  ModulePass *P = createObfuscationLegacyPass();
+  bool changed = P->runOnModule(M);
+  delete P;
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 
 } // namespace llvm
