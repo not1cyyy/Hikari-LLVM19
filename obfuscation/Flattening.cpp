@@ -107,7 +107,7 @@ void Flattening::flatten(Function *f) {
   switchVar = new AllocaInst(Type::getInt32Ty(f->getContext()),
                              DL.getAllocaAddrSpace(), "switchVar", oldTerm);
   switchVarAddr =
-      new AllocaInst(Type::getInt32Ty(f->getContext())->getPointerTo(),
+      new AllocaInst(PointerType::getUnqual(f->getContext()),
                      DL.getAllocaAddrSpace(), "", oldTerm);
 
   // Remove jump
