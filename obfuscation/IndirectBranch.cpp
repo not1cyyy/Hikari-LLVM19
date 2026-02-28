@@ -23,13 +23,11 @@ using namespace llvm;
 static cl::opt<bool>
     UseStack("indibran-use-stack", cl::init(true), cl::NotHidden,
              cl::desc("[IndirectBranch]Stack-based indirect jumps"));
-static bool UseStackTemp = true;
 
 static cl::opt<bool>
     EncryptJumpTarget("indibran-enc-jump-target", cl::init(false),
                       cl::NotHidden,
                       cl::desc("[IndirectBranch]Encrypt jump target"));
-static bool EncryptJumpTargetTemp = false;
 
 namespace llvm {
 struct IndirectBranch : public FunctionPass {
@@ -39,6 +37,9 @@ struct IndirectBranch : public FunctionPass {
   std::unordered_map<BasicBlock *, unsigned long long> indexmap;
   std::unordered_map<Function *, ConstantInt *> encmap;
   std::unordered_set<Function *> to_obf_funcs;
+  // Per-invocation option state — stored as members to avoid data races.
+  bool UseStackTemp = true;
+  bool EncryptJumpTargetTemp = false;
   IndirectBranch() : FunctionPass(ID) {
     this->flag = true;
     this->initialized = false;
