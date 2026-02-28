@@ -115,7 +115,7 @@ struct AntiDebugging : public ModulePass {
     return true;
   }
   bool runOnModule(Module &M) override {
-    if (ProbRate > 100) {
+    if (ProbRate == 0 || ProbRate > 100) {
       errs() << "AntiDebugging application function percentage "
                 "-adb_prob=x must be 0 < x <= 100";
       return false;
